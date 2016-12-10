@@ -1,6 +1,8 @@
 package hbase
 
 import (
+	"time"
+
 	pb "github.com/golang/protobuf/proto"
 	"github.com/juju/errors"
 	"github.com/ngaut/log"
@@ -51,9 +53,13 @@ func (c *client) innerCall(table, row []byte, action action, useCache bool) (*ca
 
 	err = conn.call(cl)
 	if err != nil {
+		//释放资源
+		conn.close()
 		// If failed, remove bad server conn cache.
 		cachedKey := cachedConnKey(region.Server, ClientService)
+		c.mu.Lock()
 		delete(c.cachedConns, cachedKey)
+		c.mu.Unlock()
 		return nil, errors.Trace(err)
 	}
 
@@ -68,8 +74,12 @@ func (c *client) innerDo(table, row []byte, action action, useCache bool) (pb.Me
 		return nil, errors.Trace(err)
 	}
 
-	// Wait and receive the result.
-	return <-cl.responseCh, nil
+	select {
+	case rsp := <-cl.responseCh:
+		return rsp, nil
+	case <-time.After(Timeout):
+		return nil, errors.Errorf("innerDo timeout")
+	}
 }
 
 func (c *client) do(table, row []byte, action action, useCache bool) (pb.Message, error) {

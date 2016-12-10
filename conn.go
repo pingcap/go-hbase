@@ -7,6 +7,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 
 	pb "github.com/golang/protobuf/proto"
 	"github.com/juju/errors"
@@ -123,7 +124,7 @@ func readPayloads(r io.Reader) ([][]byte, error) {
 }
 
 func newConnection(addr string, srvType ServiceType) (*connection, error) {
-	conn, err := net.Dial("tcp", addr)
+	conn, err := net.DialTimeout("tcp", addr, Timeout)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -166,6 +167,7 @@ func (c *connection) init() error {
 			return
 		}
 	}()
+
 	go c.dispatch()
 	return nil
 }
@@ -217,7 +219,7 @@ func (c *connection) writeConnectionHeader() error {
 
 	err := buf.WritePBMessage(&proto.ConnectionHeader{
 		UserInfo: &proto.UserInformation{
-			EffectiveUser: pb.String("pingcap"),
+			EffectiveUser: pb.String(UserName),
 		},
 		ServiceName: service,
 	})
@@ -241,8 +243,11 @@ func (c *connection) writeConnectionHeader() error {
 func (c *connection) dispatch() {
 	for {
 		select {
-		case buf := <-c.in:
-			// TODO: add error check.
+		case buf, more := <-c.in:
+			if !more {
+				return
+			}
+
 			c.bw.Write(buf.Bytes())
 			if len(c.in) == 0 {
 				c.bw.Flush()
@@ -280,12 +285,22 @@ func (c *connection) call(request *call) error {
 
 	c.mu.Lock()
 	c.ongoingCalls[id] = request
-	c.in <- buf
+
+	select {
+	case c.in <- buf:
+	case <-time.After(Timeout):
+		err = errors.New("c.in timeout")
+	}
+
 	c.mu.Unlock()
 
-	return nil
+	return err
 }
 
-func (c *connection) close() error {
-	return c.conn.Close()
+func (c *connection) close() {
+	if c.conn != nil {
+		c.conn.Close()
+		close(c.in)
+		c.conn = nil
+	}
 }

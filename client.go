@@ -40,6 +40,8 @@ const (
 )
 
 var (
+	UserName         string = ""              //user name to connect hbase
+	Timeout                 = 5 * time.Second //opration timeout secounds
 	hbaseHeaderBytes []byte = []byte("HBas")
 	metaTableName    []byte = []byte("hbase:meta")
 	metaRegionName   []byte = []byte("hbase:meta,,1")
@@ -173,9 +175,12 @@ func (c *client) init() error {
 		return errors.Trace(err)
 	}
 
+	log.Debug("connected to root region server...", c.rootServerName)
 	// Set buffered regionserver conn.
 	cachedKey := cachedConnKey(serverAddr, ClientService)
+	c.mu.Lock()
 	c.cachedConns[cachedKey] = conn
+	c.mu.Unlock()
 
 	res, _, _, err = c.zkClient.GetW(c.zkRoot + zkMasterAddrPath)
 	if err != nil {
@@ -198,7 +203,12 @@ func (c *client) getConn(addr string, srvType ServiceType) (*connection, error) 
 	c.mu.RUnlock()
 
 	if ok {
-		return conn, nil
+		if conn.conn != nil {
+			return conn, nil
+		}
+		c.mu.Lock()
+		delete(c.cachedConns, connKey)
+		c.mu.Unlock()
 	}
 
 	var err error
@@ -444,10 +454,7 @@ func (c *client) Close() error {
 	}
 
 	for _, conn := range c.cachedConns {
-		err := conn.close()
-		if err != nil {
-			return errors.Trace(err)
-		}
+		conn.close()
 	}
 
 	return nil
