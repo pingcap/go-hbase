@@ -39,7 +39,7 @@ type ActionTestSuit struct {
 
 var _ = Suite(&ActionTestSuit{})
 
-func (s *ActionTestSuit) SetUpTest(c *C) {
+func (s *ActionTestSuit) SetUpSuite(c *C) {
 	var err error
 	s.cli, err = NewClient(getTestZkHosts(), "/hbase")
 	c.Assert(err, IsNil)
@@ -48,10 +48,13 @@ func (s *ActionTestSuit) SetUpTest(c *C) {
 	tblDesc := NewTableDesciptor(s.tableName)
 	cf := NewColumnFamilyDescriptor("cf")
 	tblDesc.AddColumnDesc(cf)
-	s.cli.CreateTable(tblDesc, nil)
+	err = s.cli.CreateTable(tblDesc, nil)
+	c.Assert(err, IsNil)
 }
 
-func (s *ActionTestSuit) TearDownTest(c *C) {
+func (s *ActionTestSuit) TearDownSuite(c *C) {
+	c.Assert(s.cli, NotNil)
+
 	err := s.cli.DisableTable(s.tableName)
 	c.Assert(err, IsNil)
 

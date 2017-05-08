@@ -7,27 +7,33 @@ import (
 	"github.com/pingcap/go-hbase/proto"
 )
 
-type HBasePutTestSuit struct {
+type PutTestSuit struct {
 	cli       HBaseClient
 	tableName string
 }
 
-var _ = Suite(&HBasePutTestSuit{})
+var _ = Suite(&PutTestSuit{})
 
-func (s *HBasePutTestSuit) SetUpTest(c *C) {
+func (s *PutTestSuit) SetUpSuite(c *C) {
 	var err error
 	s.cli, err = NewClient(getTestZkHosts(), "/hbase")
 	c.Assert(err, IsNil)
 
-	s.tableName = "t2"
+	s.tableName = "test_put"
+}
+
+func (s *PutTestSuit) TearDownSuite(c *C) {
+}
+
+func (s *PutTestSuit) SetUpTest(c *C) {
 	tblDesc := NewTableDesciptor(s.tableName)
 	cf := NewColumnFamilyDescriptor("cf")
 	tblDesc.AddColumnDesc(cf)
-	err = s.cli.CreateTable(tblDesc, nil)
+	err := s.cli.CreateTable(tblDesc, nil)
 	c.Assert(err, IsNil)
 }
 
-func (s *HBasePutTestSuit) TearDownTest(c *C) {
+func (s *PutTestSuit) TearDownTest(c *C) {
 	err := s.cli.DisableTable(s.tableName)
 	c.Assert(err, IsNil)
 
@@ -35,7 +41,7 @@ func (s *HBasePutTestSuit) TearDownTest(c *C) {
 	c.Assert(err, IsNil)
 }
 
-func (s *HBasePutTestSuit) TestPut(c *C) {
+func (s *PutTestSuit) TestPut(c *C) {
 	g := NewPut([]byte("row"))
 	g.AddValue([]byte("cf"), []byte("q"), []byte("val"))
 	msg := g.ToProto()
@@ -51,7 +57,7 @@ func (s *HBasePutTestSuit) TestPut(c *C) {
 	}
 }
 
-func (s *HBasePutTestSuit) TestGetPut(c *C) {
+func (s *PutTestSuit) TestGetPut(c *C) {
 	p := NewPut([]byte("1_\xff\xff"))
 	p2 := NewPut([]byte("1_\xff\xfe"))
 	p3 := NewPut([]byte("1_\xff\xee"))

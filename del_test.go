@@ -5,27 +5,33 @@ import (
 	"github.com/pingcap/go-hbase/proto"
 )
 
-type HBaseDelTestSuit struct {
+type DelTestSuit struct {
 	cli       HBaseClient
 	tableName string
 }
 
-var _ = Suite(&HBaseDelTestSuit{})
+var _ = Suite(&DelTestSuit{})
 
-func (s *HBaseDelTestSuit) SetUpTest(c *C) {
+func (s *DelTestSuit) SetUpSuite(c *C) {
 	var err error
 	s.cli, err = NewClient(getTestZkHosts(), "/hbase")
 	c.Assert(err, IsNil)
 
-	s.tableName = "t2"
+	s.tableName = "test_del"
+}
+
+func (s *DelTestSuit) TearDownSuite(c *C) {
+}
+
+func (s *DelTestSuit) SetUpTest(c *C) {
 	tblDesc := NewTableDesciptor(s.tableName)
 	cf := NewColumnFamilyDescriptor("cf")
 	tblDesc.AddColumnDesc(cf)
-	err = s.cli.CreateTable(tblDesc, nil)
+	err := s.cli.CreateTable(tblDesc, nil)
 	c.Assert(err, IsNil)
 }
 
-func (s *HBaseDelTestSuit) TearDownTest(c *C) {
+func (s *DelTestSuit) TearDownTest(c *C) {
 	err := s.cli.DisableTable(s.tableName)
 	c.Assert(err, IsNil)
 
@@ -33,7 +39,7 @@ func (s *HBaseDelTestSuit) TearDownTest(c *C) {
 	c.Assert(err, IsNil)
 }
 
-func (s *HBaseDelTestSuit) TestDel(c *C) {
+func (s *DelTestSuit) TestDel(c *C) {
 	d := NewDelete([]byte("hello"))
 	d.AddFamily([]byte("cf"))
 	d.AddFamily([]byte("cf1"))
@@ -67,7 +73,7 @@ func (s *HBaseDelTestSuit) TestDel(c *C) {
 	}
 }
 
-func (s *HBaseDelTestSuit) TestDelWithClient(c *C) {
+func (s *DelTestSuit) TestDelWithClient(c *C) {
 	// Test put a new value.
 	p := NewPut([]byte("test"))
 	p.AddValue([]byte("cf"), []byte("q"), []byte("val"))

@@ -31,17 +31,23 @@ func getTestZkHosts() []string {
 
 var _ = Suite(&AdminTestSuit{})
 
-func (s *AdminTestSuit) SetUpTest(c *C) {
+func (s *AdminTestSuit) SetUpSuite(c *C) {
 	var err error
 	s.cli, err = NewClient(getTestZkHosts(), "/hbase")
 	c.Assert(err, IsNil)
 
 	s.tableName = "test_admin"
 	s.invalidTableName = "test_admin_xxx"
+}
+
+func (s *AdminTestSuit) TearDownSuite(c *C) {
+}
+
+func (s *AdminTestSuit) SetUpTest(c *C) {
 	tblDesc := NewTableDesciptor(s.tableName)
 	cf := NewColumnFamilyDescriptor("cf")
 	tblDesc.AddColumnDesc(cf)
-	err = s.cli.CreateTable(tblDesc, [][]byte{[]byte("f"), []byte("e"), []byte("c")})
+	err := s.cli.CreateTable(tblDesc, [][]byte{[]byte("f"), []byte("e"), []byte("c")})
 	c.Assert(err, IsNil)
 }
 

@@ -10,27 +10,33 @@ import (
 	"github.com/pingcap/go-hbase/proto"
 )
 
-type HBaseGetTestSuit struct {
+type GetTestSuit struct {
 	cli       HBaseClient
 	tableName string
 }
 
-var _ = Suite(&HBaseGetTestSuit{})
+var _ = Suite(&GetTestSuit{})
 
-func (s *HBaseGetTestSuit) SetUpTest(c *C) {
+func (s *GetTestSuit) SetUpSuite(c *C) {
 	var err error
 	s.cli, err = NewClient(getTestZkHosts(), "/hbase")
 	c.Assert(err, IsNil)
 
-	s.tableName = "t1"
+	s.tableName = "test_get"
+}
+
+func (s *GetTestSuit) TearDownSuite(c *C) {
+}
+
+func (s *GetTestSuit) SetUpTest(c *C) {
 	tblDesc := NewTableDesciptor(s.tableName)
 	cf := NewColumnFamilyDescriptor("cf")
 	tblDesc.AddColumnDesc(cf)
-	err = s.cli.CreateTable(tblDesc, nil)
+	err := s.cli.CreateTable(tblDesc, nil)
 	c.Assert(err, IsNil)
 }
 
-func (s *HBaseGetTestSuit) TearDownTest(c *C) {
+func (s *GetTestSuit) TearDownTest(c *C) {
 	err := s.cli.DisableTable(s.tableName)
 	c.Assert(err, IsNil)
 
@@ -38,7 +44,7 @@ func (s *HBaseGetTestSuit) TearDownTest(c *C) {
 	c.Assert(err, IsNil)
 }
 
-func (s *HBaseGetTestSuit) TestGet(c *C) {
+func (s *GetTestSuit) TestGet(c *C) {
 	g := NewGet([]byte("row"))
 	g.AddFamily([]byte("cf"))
 	g.AddColumn([]byte("cf"), []byte("c"))
@@ -59,19 +65,19 @@ func (s *HBaseGetTestSuit) TestGet(c *C) {
 	}
 }
 
-func (s *HBaseGetTestSuit) TestGetWithClient(c *C) {
+func (s *GetTestSuit) TestGetWithClient(c *C) {
 	// get item not exists
 	g := NewGet([]byte("nosuchrow"))
 	r, err := s.cli.Get("nosuchtable", g)
 	c.Assert(err, NotNil)
 	c.Assert(r, IsNil)
 
-	r, err = s.cli.Get("t1", g)
+	r, err = s.cli.Get(s.tableName, g)
 	c.Assert(r, IsNil)
 	c.Assert(err, IsNil)
 }
 
-func (s *HBaseGetTestSuit) TestConcurrentGet(c *C) {
+func (s *GetTestSuit) TestConcurrentGet(c *C) {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	wg := sync.WaitGroup{}
 	for i := 0; i < 100; i++ {

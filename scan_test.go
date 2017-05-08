@@ -16,19 +16,23 @@ type ScanTestSuit struct {
 
 var _ = Suite(&ScanTestSuit{})
 
-func (s *ScanTestSuit) SetUpTest(c *C) {
-	var (
-		err error
-	)
-
+func (s *ScanTestSuit) SetUpSuite(c *C) {
+	var err error
 	s.cli, err = NewClient(getTestZkHosts(), "/hbase")
 	c.Assert(err, IsNil)
 
 	s.tableName = "test_scan"
+}
+
+func (s *ScanTestSuit) TearDownSuite(c *C) {
+}
+
+func (s *ScanTestSuit) SetUpTest(c *C) {
 	tblDesc := NewTableDesciptor(s.tableName)
 	cf := newColumnFamilyDescriptor("cf", 3)
 	tblDesc.AddColumnDesc(cf)
-	s.cli.CreateTable(tblDesc, nil)
+	err := s.cli.CreateTable(tblDesc, nil)
+	c.Assert(err, IsNil)
 }
 
 func (s *ScanTestSuit) TearDownTest(c *C) {
@@ -367,6 +371,7 @@ func (s *ScanTestSuit) TestScanClose(c *C) {
 		c.Assert(ok, IsTrue)
 		c.Assert(err, IsNil)
 	}
+
 	// Do not get any data.
 	scan := NewScan([]byte(s.tableName), 100, s.cli)
 	err := scan.Close()
@@ -378,6 +383,7 @@ func (s *ScanTestSuit) TestScanClose(c *C) {
 	scan = NewScan([]byte(s.tableName), 100, s.cli)
 	r = scan.Next()
 	c.Assert(r, NotNil)
+
 	// If scanner Close, then do not fetch any data even cache still has some.
 	err = scan.Close()
 	c.Assert(err, IsNil)
